@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/sinmetal/fake/hook"
+	"github.com/sinmetalcraft/gcpfaker/hook"
 	"github.com/vvakame/go-harlog"
 )
 

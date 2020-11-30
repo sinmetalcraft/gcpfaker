@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sinmetal/fake/hook"
+	"github.com/sinmetalcraft/gcpfaker/hook"
 	"github.com/vvakame/go-harlog"
 )
 
