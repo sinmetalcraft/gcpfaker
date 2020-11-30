@@ -7,12 +7,12 @@ import (
 	"testing"
 
 	"cloud.google.com/go/storage"
-	"github.com/sinmetal/fake/hook/hars"
+	"github.com/sinmetalcraft/gcpfaker/hook/hars"
 	"github.com/vvakame/go-harlog"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 
-	. "github.com/sinmetal/fake/storage"
+	. "github.com/sinmetalcraft/gcpfaker/storage"
 )
 
 func TestGetObject(t *testing.T) {

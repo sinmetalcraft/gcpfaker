@@ -6,12 +6,12 @@ import (
 	"math/rand"
 	"testing"
 
-	. "github.com/sinmetal/fake/cloudtasks"
+	. "github.com/sinmetalcraft/gcpfaker/cloudtasks"
 
 	cloudtasks "cloud.google.com/go/cloudtasks/apiv2"
-	"google.golang.org/protobuf/proto"
-	_ "github.com/sinmetal/fake/hook"
+	_ "github.com/sinmetalcraft/gcpfaker/hook"
 	taskspb "google.golang.org/genproto/googleapis/cloud/tasks/v2"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestCreateTask(t *testing.T) {
