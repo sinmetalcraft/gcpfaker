@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"google.golang.org/api/option"
 	taskspb "google.golang.org/genproto/googleapis/cloud/tasks/v2"
 	"google.golang.org/grpc"
@@ -92,6 +93,36 @@ func (s *mockCloudTasksServer) CreateTask(ctx context.Context, req *taskspb.Crea
 	md, _ := metadata.FromIncomingContext(ctx)
 	if xg := md["x-goog-api-client"]; len(xg) == 0 || !strings.Contains(xg[0], "gl-go/") {
 		return nil, fmt.Errorf("x-goog-api-client = %v, expected gl-go key", xg)
+	}
+
+	for len(s.tasks) <= s.tasksIndex {
+		mtc := &mockTaskContainer{
+			reqs: []proto.Message{req},
+			err:  nil,
+			resp: []proto.Message{},
+		}
+		if req.GetTask() == nil {
+			return nil, fmt.Errorf("task is required")
+		}
+		t := req.GetTask()
+		newTask := &taskspb.Task{
+			Name:             t.GetName(),
+			MessageType:      t.GetMessageType(),
+			ScheduleTime:     t.GetScheduleTime(),
+			CreateTime:       t.GetCreateTime(),
+			DispatchDeadline: t.GetDispatchDeadline(),
+			DispatchCount:    t.GetDispatchCount(),
+			ResponseCount:    t.GetResponseCount(),
+			FirstAttempt:     t.GetFirstAttempt(),
+			LastAttempt:      t.GetLastAttempt(),
+			View:             t.GetView(),
+		}
+		if len(newTask.GetName()) < 1 {
+			newTask.Name = uuid.New().String()
+		}
+
+		mtc.resp = append(mtc.resp, newTask)
+		s.tasks = append(s.tasks, mtc)
 	}
 
 	task := s.tasks[s.tasksIndex]
