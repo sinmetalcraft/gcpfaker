@@ -118,7 +118,7 @@ func (s *mockCloudTasksServer) CreateTask(ctx context.Context, req *taskspb.Crea
 			View:             t.GetView(),
 		}
 		if len(newTask.GetName()) < 1 {
-			newTask.Name = uuid.New().String()
+			newTask.Name = fmt.Sprintf("%s/tasks/%s", req.GetParent(), uuid.New().String())
 		}
 
 		mtc.resp = append(mtc.resp, newTask)
