@@ -23,13 +23,14 @@ func TestCreateTask(t *testing.T) {
 		{"two", 2},
 	}
 
+	parent := fmt.Sprintf("projects/%s/locations/%s/queues/%s", "[PROJECT]", "[LOCATION]", "[QUEUE]")
 	for _, tt := range cases {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			faker := tasksfaker.NewFaker(t)
 			var expectedResponses []*taskspb.Task
 			for i := 0; i < tt.callCount; i++ {
-				var name string = fmt.Sprintf("name%d", rand.Int())
+				name := fmt.Sprintf("%s/tasks/name%d", parent, rand.Int())
 				var dispatchCount int32 = 1217252086
 				var responseCount int32 = 424727441
 				var expectedResponse = &taskspb.Task{
@@ -41,10 +42,9 @@ func TestCreateTask(t *testing.T) {
 				expectedResponses = append(expectedResponses, expectedResponse)
 			}
 
-			var formattedParent string = fmt.Sprintf("projects/%s/locations/%s/queues/%s", "[PROJECT]", "[LOCATION]", "[QUEUE]")
 			var task *taskspb.Task = &taskspb.Task{}
 			var request = &taskspb.CreateTaskRequest{
-				Parent: formattedParent,
+				Parent: parent,
 				Task:   task,
 			}
 
@@ -88,6 +88,7 @@ func TestCreateTask_defaultResponse(t *testing.T) {
 		{"two", 2},
 	}
 
+	parent := fmt.Sprintf("projects/%s/locations/%s/queues/%s", "[PROJECT]", "[LOCATION]", "[QUEUE]")
 	for _, tt := range cases {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -100,7 +101,7 @@ func TestCreateTask_defaultResponse(t *testing.T) {
 			var expectedResponses []*taskspb.Task
 			for i := 0; i < tt.callCount; i++ {
 				var expectedResponse = &taskspb.Task{
-					Name: fmt.Sprintf("name%d", rand.Int()),
+					Name: fmt.Sprintf("%s/tasks/name%d", parent, rand.Int()),
 					MessageType: &taskspb.Task_AppEngineHttpRequest{
 						AppEngineHttpRequest: &taskspb.AppEngineHttpRequest{
 							HttpMethod:  taskspb.HttpMethod_GET,
