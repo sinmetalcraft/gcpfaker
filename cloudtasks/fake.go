@@ -17,6 +17,7 @@ import (
 )
 
 type Faker struct {
+	serv      *grpc.Server
 	mock      *mockCloudTasksServer
 	ClientOpt option.ClientOption
 }
@@ -41,9 +42,14 @@ func NewFaker(t *testing.T) *Faker {
 	}
 
 	return &Faker{
+		serv:      serv,
 		mock:      &mockCloudTasks,
 		ClientOpt: option.WithGRPCConn(conn),
 	}
+}
+
+func (f *Faker) Stop() {
+	f.serv.Stop()
 }
 
 // AddMockResponse is Set Response when CreateTask is called
@@ -65,7 +71,7 @@ func (f *Faker) GetCreateTaskCallCount() int {
 // GetCreateTaskRequest is Returns the request passed to CreateTask
 func (f *Faker) GetCreateTaskRequest(i int) ([]proto.Message, error) {
 	if i > len(f.mock.tasks)-1 {
-		return nil, fmt.Errorf("GetCreateTaskRequest out of range. len=%d", len(f.mock.tasks))
+		return nil, fmt.Errorf("GetCreateTaskRequest out of range. arg=%d,len=%d", i, len(f.mock.tasks))
 	}
 	return f.mock.tasks[i].reqs, nil
 }
@@ -84,8 +90,6 @@ type mockCloudTasksServer struct {
 
 	tasks []*mockTaskContainer
 
-	tasksIndex int
-
 	createTaskCallCount int
 }
 
@@ -95,7 +99,7 @@ func (s *mockCloudTasksServer) CreateTask(ctx context.Context, req *taskspb.Crea
 		return nil, fmt.Errorf("x-goog-api-client = %v, expected gl-go key", xg)
 	}
 
-	for len(s.tasks) <= s.tasksIndex {
+	for len(s.tasks) <= s.createTaskCallCount {
 		mtc := &mockTaskContainer{
 			reqs: []proto.Message{req},
 			err:  nil,
@@ -125,8 +129,7 @@ func (s *mockCloudTasksServer) CreateTask(ctx context.Context, req *taskspb.Crea
 		s.tasks = append(s.tasks, mtc)
 	}
 
-	task := s.tasks[s.tasksIndex]
-	s.tasksIndex++
+	task := s.tasks[s.createTaskCallCount]
 	s.createTaskCallCount++
 
 	task.reqs = append(task.reqs, req)

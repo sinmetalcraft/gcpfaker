@@ -28,6 +28,8 @@ func TestCreateTask(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			faker := tasksfaker.NewFaker(t)
+			defer faker.Stop()
+
 			var expectedResponses []*taskspb.Task
 			for i := 0; i < tt.callCount; i++ {
 				name := fmt.Sprintf("%s/tasks/name%d", parent, rand.Int())
@@ -86,6 +88,7 @@ func TestCreateTask_defaultResponse(t *testing.T) {
 	}{
 		{"one", 1},
 		{"two", 2},
+		{"51", 51},
 	}
 
 	parent := fmt.Sprintf("projects/%s/locations/%s/queues/%s", "[PROJECT]", "[LOCATION]", "[QUEUE]")
@@ -150,6 +153,102 @@ func TestCreateTask_defaultResponse(t *testing.T) {
 
 			if e, g := tt.callCount, faker.GetCreateTaskCallCount(); e != g {
 				t.Errorf("createTaskCallCount want %v but got %v", e, g)
+			}
+			_, err = faker.GetCreateTaskRequest(tt.callCount - 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestCreateTask_defaultResponse_HeavyLoop(t *testing.T) {
+	cases := []struct {
+		name      string
+		callCount int
+	}{
+		{"one", 1},
+		{"two", 2},
+		{"1000", 1000},
+		{"1100", 1100},
+		{"1200", 1200},
+		{"1300", 1300},
+		{"1400", 1400},
+		{"1500", 1500},
+		{"1600", 1600},
+		{"1700", 1700},
+		{"1800", 1800},
+		{"1900", 1900},
+	}
+
+	parent := fmt.Sprintf("projects/%s/locations/%s/queues/%s", "[PROJECT]", "[LOCATION]", "[QUEUE]")
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			faker := tasksfaker.NewFaker(t)
+			c, err := cloudtasks.NewClient(context.Background(), faker.ClientOpt)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var expectedResponses []*taskspb.Task
+			for i := 0; i < tt.callCount; i++ {
+				var expectedResponse = &taskspb.Task{
+					Name: fmt.Sprintf("%s/tasks/name%d", parent, rand.Int()),
+					MessageType: &taskspb.Task_AppEngineHttpRequest{
+						AppEngineHttpRequest: &taskspb.AppEngineHttpRequest{
+							HttpMethod:  taskspb.HttpMethod_GET,
+							RelativeUri: "/tq/hoge",
+						},
+					},
+					DispatchCount: 0,
+					ResponseCount: 0,
+				}
+				expectedResponses = append(expectedResponses, expectedResponse)
+			}
+
+			var formattedParent string = fmt.Sprintf("projects/%s/locations/%s/queues/%s", "[PROJECT]", "[LOCATION]", "[QUEUE]")
+			for i := 0; i < tt.callCount; i++ {
+				var task *taskspb.Task = &taskspb.Task{
+					Name: expectedResponses[i].GetName(),
+					MessageType: &taskspb.Task_AppEngineHttpRequest{
+						AppEngineHttpRequest: &taskspb.AppEngineHttpRequest{
+							HttpMethod:  taskspb.HttpMethod_GET,
+							RelativeUri: "/tq/hoge",
+						},
+					},
+				}
+				var request = &taskspb.CreateTaskRequest{
+					Parent: formattedParent,
+					Task:   task,
+				}
+
+				resp, err := c.CreateTask(context.Background(), request)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				req, err := faker.GetCreateTaskRequest(i)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if e, g := request, req[0]; !proto.Equal(e, g) {
+					t.Errorf("request want %q, but got %q", e, g)
+				}
+
+				if e, g := expectedResponses[i], resp; !proto.Equal(e, g) {
+					t.Errorf("response want %q, but got %q)", e, g)
+				}
+			}
+
+			if e, g := tt.callCount, faker.GetCreateTaskCallCount(); e != g {
+				t.Errorf("createTaskCallCount want %v but got %v", e, g)
+			}
+			_, err = faker.GetCreateTaskRequest(tt.callCount - 1)
+			if err != nil {
+				t.Fatal(err)
 			}
 		})
 	}
