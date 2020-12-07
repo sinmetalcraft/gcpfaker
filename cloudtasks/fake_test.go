@@ -14,7 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestCreateTask(t *testing.T) {
+func TestMockCloudTasksServer_CreateTask(t *testing.T) {
 	cases := []struct {
 		name      string
 		callCount int
@@ -65,7 +65,7 @@ func TestCreateTask(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if e, g := request, req[0]; !proto.Equal(e, g) {
+				if e, g := request, req; !proto.Equal(e, g) {
 					t.Errorf("request want %q, but got %q", e, g)
 				}
 
@@ -81,6 +81,7 @@ func TestCreateTask(t *testing.T) {
 	}
 }
 
+// TestCreateTask_defaultResponse is AddMockResponse を呼ばずに default の Response を受け取ることで問題が起きないかをテスト
 func TestCreateTask_defaultResponse(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -96,6 +97,8 @@ func TestCreateTask_defaultResponse(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			faker := tasksfaker.NewFaker(t)
+			defer faker.Stop()
+
 			c, err := cloudtasks.NewClient(context.Background(), faker.ClientOpt)
 			if err != nil {
 				t.Fatal(err)
@@ -142,7 +145,7 @@ func TestCreateTask_defaultResponse(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if e, g := request, req[0]; !proto.Equal(e, g) {
+				if e, g := request, req; !proto.Equal(e, g) {
 					t.Errorf("request want %q, but got %q", e, g)
 				}
 
@@ -157,6 +160,71 @@ func TestCreateTask_defaultResponse(t *testing.T) {
 			_, err = faker.GetCreateTaskRequest(tt.callCount - 1)
 			if err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestFaker_AddMockResponseWithTaskName(t *testing.T) {
+	cases := []struct {
+		name      string
+		callCount int
+	}{
+		{"51", 51},
+		{"99", 99},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			faker := tasksfaker.NewFaker(t)
+			defer faker.Stop()
+
+			c, err := cloudtasks.NewClient(context.Background(), faker.ClientOpt)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var parent string = fmt.Sprintf("projects/%s/locations/%s/queues/%s", "[PROJECT]", "[LOCATION]", "[QUEUE]")
+			const num = 10
+			mockTaskName := fmt.Sprintf("%s/tasks/tn%d", parent, num)
+			var dispatchCount int32 = 99
+			var responseCount int32 = 99
+			var expectedResponse = &taskspb.Task{
+				Name:          mockTaskName,
+				DispatchCount: dispatchCount,
+				ResponseCount: responseCount,
+			}
+			faker.AddMockResponseWithTaskName(mockTaskName, nil, expectedResponse)
+
+			for i := 0; i < tt.callCount; i++ {
+				task := &taskspb.Task{
+					Name: fmt.Sprintf("%s/tasks/tn%d", parent, i),
+					MessageType: &taskspb.Task_AppEngineHttpRequest{
+						AppEngineHttpRequest: &taskspb.AppEngineHttpRequest{
+							HttpMethod:  taskspb.HttpMethod_GET,
+							RelativeUri: "/tq/hoge",
+						},
+					},
+				}
+				var request = &taskspb.CreateTaskRequest{
+					Parent: parent,
+					Task:   task,
+				}
+
+				resp, err := c.CreateTask(context.Background(), request)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if mockTaskName == task.GetName() {
+					if e, g := dispatchCount, resp.GetDispatchCount(); e != g {
+						t.Errorf("want MockResponse.dispatchCount %d but got %d", e, g)
+					}
+				}
+			}
+
+			if e, g := tt.callCount, faker.GetCreateTaskCallCount(); e != g {
+				t.Errorf("want createTaskRequests.len %d but got %d", e, g)
 			}
 		})
 	}
@@ -188,6 +256,8 @@ func TestCreateTask_defaultResponse_HeavyLoop(t *testing.T) {
 			t.Parallel()
 
 			faker := tasksfaker.NewFaker(t)
+			defer faker.Stop()
+
 			c, err := cloudtasks.NewClient(context.Background(), faker.ClientOpt)
 			if err != nil {
 				t.Fatal(err)
@@ -234,7 +304,7 @@ func TestCreateTask_defaultResponse_HeavyLoop(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if e, g := request, req[0]; !proto.Equal(e, g) {
+				if e, g := request, req; !proto.Equal(e, g) {
 					t.Errorf("request want %q, but got %q", e, g)
 				}
 
