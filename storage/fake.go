@@ -1,11 +1,14 @@
 package storage
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 type Faker struct {
@@ -33,14 +36,134 @@ func NewFaker(t *testing.T) *Faker {
 
 // AddResponse is RequestされたURLに対するResponseを登録する
 // 同じURLを複数回呼ぶ時は複数回Addする
-func (faker *Faker) AddResponse(url string, method string, response *http.Response) {
+func (faker *Faker) AddResponse(url string, method string, response *http.Response) error {
 	faker.transport.fakeResponses.Add(url, method, response)
+	return nil
 }
 
 // AddGetObjectResponse is 指定したobjectの読み込みに対してのResponseを登録する
 // 同じObjectを複数回読み込む時は複数回Addする
-func (faker *Faker) AddGetObjectResponse(bucket string, object string, response *http.Response) {
+func (faker *Faker) AddGetObjectResponse(bucket string, object string, response *http.Response) error {
 	faker.transport.fakeResponses.Add(fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucket, object), http.MethodGet, response)
+	return nil
+}
+
+// WriteObjectResponse is Cloud StorageにPostを行った時のResponse Body
+type WriteObjectResponse struct {
+	Kind                    string    `json:"kind"`
+	ID                      string    `json:"id"`
+	SelfLink                string    `json:"selfLink"`
+	Name                    string    `json:"name"`
+	Bucket                  string    `json:"bucket"`
+	Generation              string    `json:"generation"`
+	Metageneration          string    `json:"metageneration"`
+	ContentType             string    `json:"contentType"`
+	TimeCreated             time.Time `json:"timeCreated"`
+	Updated                 time.Time `json:"updated"`
+	StorageClass            string    `json:"storageClass"`
+	TimeStorageClassUpdated time.Time `json:"timeStorageClassUpdated"`
+	Size                    string    `json:"size"`
+	Md5Hash                 string    `json:"md5Hash"`
+	MediaLink               string    `json:"mediaLink"`
+	ACL                     []*ACL    `json:"acl"`
+	Owner                   *Owner    `json:"owner"`
+	Crc32C                  string    `json:"crc32c"`
+	Etag                    string    `json:"etag"`
+}
+
+type ACL struct {
+	Kind        string       `json:"kind"`
+	ID          string       `json:"id"`
+	SelfLink    string       `json:"selfLink"`
+	Bucket      string       `json:"bucket"`
+	Object      string       `json:"object"`
+	Generation  string       `json:"generation"`
+	Entity      string       `json:"entity"`
+	Role        string       `json:"role"`
+	ProjectTeam *ProjectTeam `json:"projectTeam,omitempty"`
+	Etag        string       `json:"etag"`
+	Email       string       `json:"email,omitempty"`
+}
+
+type ProjectTeam struct {
+	ProjectNumber string `json:"projectNumber"`
+	Team          string `json:"team"`
+}
+
+type Owner struct {
+	Entity string `json:"entity"`
+}
+
+// GenerateSimplePostObjectOKResponse is 最低限指定したそうな場所だけ指定すれば残りは適当に埋めたOKResponseを返す
+func GenerateSimplePostObjectOKResponse(bucket string, object string, contentType string, size int64) *WriteObjectResponse {
+	return &WriteObjectResponse{
+		Kind:                    "storage#object",
+		ID:                      fmt.Sprintf("%s/%s/1570087904014021", bucket, object),
+		SelfLink:                fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s", bucket, object),
+		Name:                    object,
+		Bucket:                  bucket,
+		Generation:              "1570087904014021",
+		Metageneration:          "1",
+		ContentType:             contentType,
+		TimeCreated:             time.Now(),
+		Updated:                 time.Now(),
+		StorageClass:            "REGIONAL",
+		TimeStorageClassUpdated: time.Now(),
+		Size:                    fmt.Sprintf("%d", size),
+		Md5Hash:                 "3fv0VXHjk3nCc3znVNrcRw==",
+		MediaLink:               fmt.Sprintf("https://www.googleapis.com/download/storage/v1/b/%s/o/%s?generation=1570087904014021&alt=media", bucket, object),
+		ACL: []*ACL{
+			{
+				Kind:       "storage#objectAccessControl",
+				ID:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
+				SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/project-owners-168610916801", bucket, object),
+				Bucket:     bucket,
+				Object:     object,
+				Generation: "1570087904014021",
+				Entity:     "project-owners-168610916801",
+				Role:       "OWNER",
+				ProjectTeam: &ProjectTeam{
+					ProjectNumber: "168610916801",
+					Team:          "owners",
+				},
+				Etag:  "CMXdo57J/+QCEAE=",
+				Email: "",
+			},
+			{
+				Kind:       "storage#objectAccessControl",
+				ID:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
+				SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/project-owners-168610916801", bucket, object),
+				Bucket:     bucket,
+				Object:     object,
+				Generation: "1570087904014021",
+				Entity:     "project-owners-168610916801",
+				Role:       "OWNER",
+				Etag:       "CMXdo57J/+QCEAE=",
+				Email:      "faker@example.com",
+			},
+		},
+		Owner: &Owner{
+			Entity: "user-faker@example.com",
+		},
+		Crc32C: "vOMu5Q==",
+		Etag:   "CMXdo57J/+QCEAE=",
+	}
+}
+
+func (faker *Faker) AddPostObjectOKResponse(bucket string, object string, header map[string][]string, resp *WriteObjectResponse) error {
+	body, err := json.Marshal(resp)
+	if err != nil {
+		return err
+	}
+	r := ioutil.NopCloser(bytes.NewReader(body))
+	res := &http.Response{
+		Status:        "200 OK",
+		StatusCode:    http.StatusOK,
+		Header:        header,
+		Body:          r,
+		ContentLength: int64(len(body)),
+	}
+	return faker.AddResponse(fmt.Sprintf("https://storage.googleapis.com/upload/storage/v1/b/%s/o?alt=json&name=%s&prettyPrint=false&projection=full&uploadType=multipart", bucket, object), http.MethodPost, res)
 }
 
 var _ http.RoundTripper = &Transport{}

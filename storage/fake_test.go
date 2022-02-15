@@ -42,7 +42,9 @@ func TestGetObject(t *testing.T) {
 		Body:          r,
 		ContentLength: int64(len([]byte(body))),
 	}
-	faker.AddGetObjectResponse(bucket, object, res)
+	if err := faker.AddGetObjectResponse(bucket, object, res); err != nil {
+		t.Fatal(err)
+	}
 
 	reader, err := stg.Bucket(bucket).Object(object).NewReader(ctx)
 	if err != nil {
@@ -87,6 +89,37 @@ func TestRealGetObjectHar(t *testing.T) {
 	}
 
 	hars.Compare(t, "object.get.har.golden", har.HAR())
+}
+
+func TestPostObject(t *testing.T) {
+	ctx := context.Background()
+
+	faker := storagefaker.NewFaker(t)
+
+	stg, err := storage.NewClient(ctx, option.WithHTTPClient(faker.Client))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const bucket = "sinmetal-ci-fake"
+	const object = "hoge.txt"
+	const body = `{"message":"Hello Hoge"}`
+	resp := storagefaker.GenerateSimplePostObjectOKResponse(bucket, object, "application/json;utf-8", int64(len([]byte(body))))
+	if err := faker.AddPostObjectOKResponse(bucket, object, make(map[string][]string), resp); err != nil {
+		t.Fatal(err)
+	}
+
+	w := stg.Bucket(bucket).Object(object).NewWriter(ctx)
+	n, err := w.Write([]byte(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n < 1 {
+		t.Error("write result bytes is Zero")
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestPostObjectHar(t *testing.T) {
