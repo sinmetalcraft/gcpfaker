@@ -4,28 +4,47 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"strings"
 	"testing"
 
 	"cloud.google.com/go/storage"
+	"github.com/google/go-cmp/cmp"
 	"github.com/sinmetalcraft/gcpfaker/hook/hars"
 	"github.com/vvakame/go-harlog"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 
-	. "github.com/sinmetalcraft/gcpfaker/storage"
+	storagefaker "github.com/sinmetalcraft/gcpfaker/storage"
 )
 
 func TestGetObject(t *testing.T) {
 	ctx := context.Background()
 
-	faker := NewFaker(t)
+	faker := storagefaker.NewFaker(t)
 
 	stg, err := storage.NewClient(ctx, option.WithHTTPClient(faker.Client))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	reader, err := stg.Bucket("sinmetal-ci-fake").Object("hoge.txt").NewReader(ctx)
+	const bucket = "sinmetal-ci-fake"
+	const object = "hoge.txt"
+	const body = `{"message":"Hello Hoge"}`
+	header := make(map[string][]string)
+	header["content-type"] = []string{"application/json;utf-8"}
+	header["content-length"] = []string{fmt.Sprintf("%d", len([]byte(body)))}
+	r := ioutil.NopCloser(strings.NewReader(body))
+	res := &http.Response{
+		Status:        "200 OK",
+		StatusCode:    http.StatusOK,
+		Header:        header,
+		Body:          r,
+		ContentLength: int64(len([]byte(body))),
+	}
+	faker.AddGetObjectResponse(bucket, object, res)
+
+	reader, err := stg.Bucket(bucket).Object(object).NewReader(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,11 +54,13 @@ func TestGetObject(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	body, err := ioutil.ReadAll(reader)
+	got, err := ioutil.ReadAll(reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Printf("%+v", string(body))
+	if !cmp.Equal(string(got), body) {
+		t.Errorf("unexpected response body got %s", string(got))
+	}
 }
 
 func TestRealGetObjectHar(t *testing.T) {
@@ -47,7 +68,7 @@ func TestRealGetObjectHar(t *testing.T) {
 
 	hc, err := google.DefaultClient(ctx, storage.ScopeReadWrite)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	// inject HAR logger!
@@ -73,7 +94,7 @@ func TestPostObjectHar(t *testing.T) {
 
 	hc, err := google.DefaultClient(ctx, storage.ScopeReadWrite)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	// inject HAR logger!

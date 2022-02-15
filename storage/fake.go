@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -18,8 +17,10 @@ func NewFaker(t *testing.T) *Faker {
 	t.Helper()
 
 	transport := &Transport{
+		t: t,
 		fakeResponses: &fakeResponses{
-			m: make(map[string]*http.Response),
+			responseMap:     make(map[string]*http.Response),
+			requestCountMap: make(map[string]int),
 		},
 	}
 	return &Faker{
@@ -28,6 +29,18 @@ func NewFaker(t *testing.T) *Faker {
 			Transport: transport,
 		},
 	}
+}
+
+// AddResponse is RequestされたURLに対するResponseを登録する
+// 同じURLを複数回呼ぶ時は複数回Addする
+func (faker *Faker) AddResponse(url string, method string, response *http.Response) {
+	faker.transport.fakeResponses.Add(url, method, response)
+}
+
+// AddGetObjectResponse is 指定したobjectの読み込みに対してのResponseを登録する
+// 同じObjectを複数回読み込む時は複数回Addする
+func (faker *Faker) AddGetObjectResponse(bucket string, object string, response *http.Response) {
+	faker.transport.fakeResponses.Add(fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucket, object), http.MethodGet, response)
 }
 
 var _ http.RoundTripper = &Transport{}
@@ -47,34 +60,48 @@ func (tran *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 type fakeResponses struct {
-	m map[string]*http.Response
+	// responseMap is RequestされたObjectのURLに対して返すResponseを保持する
+	// 同じObjectURLへのRequestの場合、順番に返していく
+	responseMap map[string]*http.Response
+
+	// requestCountMap is RequestされたObjectのURLをカウントする
+	requestCountMap map[string]int
 }
 
-func (f *fakeResponses) key(url string, method string) string {
+func (f *fakeResponses) keyForResponseMap(url string, method string, count int) string {
+	return fmt.Sprintf("%s-%s-%d", url, strings.ToUpper(method), count)
+}
+
+func (f *fakeResponses) keyForRequestCountMap(url string, method string) string {
 	return fmt.Sprintf("%s-%s", url, strings.ToUpper(method))
 }
 
 func (f *fakeResponses) Add(url string, method string, response *http.Response) {
-	f.m[f.key(url, method)] = response
+	for i := 0; ; i++ {
+		key := f.keyForResponseMap(url, method, i)
+		_, ok := f.responseMap[key]
+		if ok {
+			continue
+		}
+		f.responseMap[key] = response
+		break
+	}
 }
 
 func (f *fakeResponses) Get(url string, method string) (*http.Response, error) {
-	v, ok := f.m[f.key(url, method)]
+	count, ok := f.requestCountMap[f.keyForRequestCountMap(url, method)]
 	if !ok {
-		// TODO 適当なやつを返す
-		switch method {
-		case http.MethodGet:
-			return GetObjectOKResponse(), nil
-		case http.MethodPost:
-			return PostObjectOKResponse(), nil
-		default:
-			return nil, errors.New("unsupported method")
-		}
+		count = 0
+	}
+
+	v, ok := f.responseMap[f.keyForResponseMap(url, method, count)]
+	if !ok {
+		return nil, fmt.Errorf("response is not registered. %s:%s RequestCount is %d", method, url, count+1)
 	}
 	return v, nil
 }
 
-func GetObjectOKResponse() *http.Response {
+func GetObjectOKResponseSample() *http.Response {
 	header := make(map[string][]string)
 	header["Accept-Ranges"] = []string{"bytes"}
 	header["Age"] = []string{"268"}
@@ -105,7 +132,7 @@ func GetObjectOKResponse() *http.Response {
 	}
 }
 
-func PostObjectOKResponse() *http.Response {
+func PostObjectOKResponseSample() *http.Response {
 	header := make(map[string][]string)
 	header["Server"] = []string{"UploadServer"}
 	header["Alt-Svc"] = []string{`quic=":443"; ma=2592000; v="46,43",h3-Q048=":443"; ma=2592000,h3-Q046=":443"; ma=2592000,h3-Q043=":443"; ma=2592000`}
