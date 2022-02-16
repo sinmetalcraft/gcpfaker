@@ -1,12 +1,17 @@
 package storage
 
 import (
-	"errors"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
+
+	"cloud.google.com/go/storage"
+	apigcs "google.golang.org/api/storage/v1"
 )
 
 type Faker struct {
@@ -18,8 +23,10 @@ func NewFaker(t *testing.T) *Faker {
 	t.Helper()
 
 	transport := &Transport{
+		t: t,
 		fakeResponses: &fakeResponses{
-			m: make(map[string]*http.Response),
+			responseMap:     make(map[string]*http.Response),
+			requestCountMap: make(map[string]int),
 		},
 	}
 	return &Faker{
@@ -28,6 +35,277 @@ func NewFaker(t *testing.T) *Faker {
 			Transport: transport,
 		},
 	}
+}
+
+// AddResponse is RequestされたURLに対するResponseを登録する
+// 同じURLを複数回呼ぶ時は複数回Addする
+func (faker *Faker) AddResponse(url string, method string, response *http.Response) error {
+	faker.transport.fakeResponses.Add(url, method, response)
+	return nil
+}
+
+// AddGetObjectResponse is 指定したobjectの読み込みに対してのResponseを登録する
+// 同じObjectを複数回読み込む時は複数回Addする
+func (faker *Faker) AddGetObjectResponse(bucket string, object string, response *http.Response) error {
+	faker.transport.fakeResponses.Add(fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucket, object), http.MethodGet, response)
+	return nil
+}
+
+// GenerateSimplePostObjectOKResponse is 最低限指定したそうな場所だけ指定すれば残りは適当に埋めたOKResponseを返す
+func GenerateSimplePostObjectOKResponse(bucket string, object string, contentType string, size uint64) *apigcs.Object {
+	return &apigcs.Object{
+		Kind:                    "storage#object",
+		Id:                      fmt.Sprintf("%s/%s/1570087904014021", bucket, object),
+		SelfLink:                fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s", bucket, object),
+		Name:                    object,
+		Bucket:                  bucket,
+		Generation:              1570087904014021,
+		Metageneration:          1,
+		ContentType:             contentType,
+		TimeCreated:             time.Now().String(),
+		Updated:                 time.Now().String(),
+		StorageClass:            "REGIONAL",
+		TimeStorageClassUpdated: time.Now().String(),
+		Size:                    size,
+		Md5Hash:                 "3fv0VXHjk3nCc3znVNrcRw==",
+		MediaLink:               fmt.Sprintf("https://www.googleapis.com/download/storage/v1/b/%s/o/%s?generation=1570087904014021&alt=media", bucket, object),
+		Acl: []*apigcs.ObjectAccessControl{
+			{
+				Kind:       "storage#objectAccessControl",
+				Id:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
+				SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/project-owners-168610916801", bucket, object),
+				Bucket:     bucket,
+				Object:     object,
+				Generation: 1570087904014021,
+				Entity:     "project-owners-168610916801",
+				Role:       "OWNER",
+				ProjectTeam: &apigcs.ObjectAccessControlProjectTeam{
+					ProjectNumber: "168610916801",
+					Team:          "owners",
+				},
+				Etag:  "CMXdo57J/+QCEAE=",
+				Email: "",
+			},
+			{
+				Kind:       "storage#objectAccessControl",
+				Id:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
+				SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/project-owners-168610916801", bucket, object),
+				Bucket:     bucket,
+				Object:     object,
+				Generation: 1570087904014021,
+				Entity:     "project-owners-168610916801",
+				Role:       "OWNER",
+				Etag:       "CMXdo57J/+QCEAE=",
+				Email:      "faker@example.com",
+			},
+		},
+		Owner: &apigcs.ObjectOwner{
+			Entity: "user-faker@example.com",
+		},
+		Crc32c: "vOMu5Q==",
+		Etag:   "CMXdo57J/+QCEAE=",
+	}
+}
+
+func (faker *Faker) AddPostObjectOKResponse(bucket string, object string, header map[string][]string, resp *apigcs.Object) error {
+	body, err := json.Marshal(resp)
+	if err != nil {
+		return err
+	}
+	r := ioutil.NopCloser(bytes.NewReader(body))
+	res := &http.Response{
+		Status:        "200 OK",
+		StatusCode:    http.StatusOK,
+		Header:        header,
+		Body:          r,
+		ContentLength: int64(len(body)),
+	}
+	return faker.AddResponse(fmt.Sprintf("https://storage.googleapis.com/upload/storage/v1/b/%s/o?alt=json&name=%s&prettyPrint=false&projection=full&uploadType=multipart", bucket, object), http.MethodPost, res)
+}
+
+func GenerateSimpleListObjectACLOKResponse(bucket string, object string, rules []storage.ACLRule) (*http.Response, error) {
+	header := map[string][]string{}
+	header["Content-Type"] = []string{"application/json; charset=UTF-8"}
+
+	var items []*apigcs.ObjectAccessControl
+	for _, rule := range rules {
+		var generation int64 = 1570091215037603
+		item := &apigcs.ObjectAccessControl{
+			Bucket:     bucket,
+			Domain:     rule.Domain,
+			Email:      rule.Email,
+			Entity:     string(rule.Entity),
+			Etag:       "CKPJjMnV/+QCEAI=",
+			Generation: generation,
+			Id:         fmt.Sprintf("%s/%s/%d/%s", bucket, object, generation, rule.Entity),
+			Kind:       "storage#objectAccessControl",
+			Object:     object,
+			Role:       string(rule.Role),
+			SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/%s", bucket, object, rule.Entity),
+		}
+		// TODO ProjectTeamはrule.Entityがproject-owners-{},project-editors-{},project-viewers-{}のいずれかの時に連動して入るようにした方が親切かもしれない
+		if rule.ProjectTeam != nil {
+			item.ProjectTeam = &apigcs.ObjectAccessControlProjectTeam{
+				ProjectNumber: rule.ProjectTeam.ProjectNumber,
+				Team:          rule.ProjectTeam.Team,
+			}
+		}
+		items = append(items, item)
+	}
+
+	acls := &apigcs.ObjectAccessControls{
+		Kind:  "storage#objectAccessControls",
+		Items: items,
+	}
+	body, err := json.Marshal(acls)
+	if err != nil {
+		return nil, err
+	}
+	r := ioutil.NopCloser(bytes.NewReader(body))
+	res := &http.Response{
+		Status:        "200 OK",
+		StatusCode:    http.StatusOK,
+		Header:        header,
+		Body:          r,
+		ContentLength: int64(len(body)),
+	}
+	return res, nil
+}
+
+// AddListObjectACLResponse is 指定したobjectのACLListの取得に対してのResponseを登録する
+// 同じ操作を複数回実行する時は複数回Addする
+func (faker *Faker) AddListObjectACLResponse(bucket string, object string, response *http.Response) error {
+	faker.transport.fakeResponses.Add(fmt.Sprintf("https://storage.googleapis.com/storage/v1/b/%s/o/%s/acl?alt=json&prettyPrint=false", bucket, object), http.MethodGet, response)
+	return nil
+}
+
+// AddListObjectACLResponse is 指定したobjectのACLListの取得に対してのResponseを登録する
+// 同じ操作を複数回実行する時は複数回Addする
+func (faker *Faker) AddListObjectACLOKResponse(bucket string, object string, rules []storage.ACLRule) error {
+	res, err := GenerateSimpleListObjectACLOKResponse(bucket, object, rules)
+	if err != nil {
+		return err
+	}
+	faker.transport.fakeResponses.Add(fmt.Sprintf("https://storage.googleapis.com/storage/v1/b/%s/o/%s/acl?alt=json&prettyPrint=false", bucket, object), http.MethodGet, res)
+	return nil
+}
+
+// GenerateSimpleUpdateObjectAttrsOKResponse is 更新したObjectの結果のAttrsの情報は気にせず、validなものがあれば良い時に使える
+func GenerateSimpleUpdateObjectAttrsOKResponse(bucket string, object string) (*http.Response, error) {
+	header := map[string][]string{}
+	header["Content-Type"] = []string{"application/json; charset=UTF-8"}
+	obj := &apigcs.Object{
+		Kind:                    "storage#object",
+		Id:                      fmt.Sprintf("%s/%s/1570087904014021", bucket, object),
+		SelfLink:                fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s", bucket, object),
+		Name:                    object,
+		Bucket:                  bucket,
+		Generation:              1570087904014021,
+		Metageneration:          1,
+		ContentType:             "text/plain; charset=utf-8",
+		TimeCreated:             time.Now().String(),
+		Updated:                 time.Now().String(),
+		StorageClass:            "REGIONAL",
+		TimeStorageClassUpdated: time.Now().String(),
+		Size:                    1,
+		Md5Hash:                 "3fv0VXHjk3nCc3znVNrcRw==",
+		MediaLink:               fmt.Sprintf("https://www.googleapis.com/download/storage/v1/b/%s/o/%s?generation=1570087904014021&alt=media", bucket, object),
+		Acl: []*apigcs.ObjectAccessControl{
+			{
+				Kind:       "storage#objectAccessControl",
+				Id:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
+				SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/project-owners-168610916801", bucket, object),
+				Bucket:     bucket,
+				Object:     object,
+				Generation: 1570087904014021,
+				Entity:     "project-owners-168610916801",
+				Role:       "OWNER",
+				ProjectTeam: &apigcs.ObjectAccessControlProjectTeam{
+					ProjectNumber: "168610916801",
+					Team:          "owners",
+				},
+				Etag:  "CMXdo57J/+QCEAE=",
+				Email: "",
+			},
+			{
+				Kind:       "storage#objectAccessControl",
+				Id:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
+				SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/project-owners-168610916801", bucket, object),
+				Bucket:     bucket,
+				Object:     object,
+				Generation: 1570087904014021,
+				Entity:     "project-owners-168610916801",
+				Role:       "OWNER",
+				Etag:       "CMXdo57J/+QCEAE=",
+				Email:      "faker@example.com",
+			},
+		},
+		Owner: &apigcs.ObjectOwner{
+			Entity: "user-faker@example.com",
+		},
+		Crc32c: "vOMu5Q==",
+		Etag:   "CMXdo57J/+QCEAE=",
+	}
+	body, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r := ioutil.NopCloser(bytes.NewReader(body))
+	res := &http.Response{
+		Status:        "200 OK",
+		StatusCode:    http.StatusOK,
+		Header:        header,
+		Body:          r,
+		ContentLength: int64(len(body)),
+	}
+	return res, nil
+}
+
+// AddUpdateObjectAttrsResponse is 指定したobjectのmetaのUpdateに対してのResponseを登録する
+// 同じ操作を複数回実行する時は複数回Addする
+func (faker *Faker) AddUpdateObjectAttrsResponse(bucket string, object string, response *http.Response) error {
+	if err := faker.AddResponse(fmt.Sprintf("https://storage.googleapis.com/storage/v1/b/%s/o/%s?alt=json&prettyPrint=false&projection=full", bucket, object), http.MethodPatch, response); err != nil {
+		return err
+	}
+	return nil
+}
+
+// AddUpdateObjectAttrsOKResponse is 指定したobjectのmetaのUpdateに対してのOKResponseを登録する
+// 同じ操作を複数回実行する時は複数回Addする
+func (faker *Faker) AddUpdateObjectAttrsOKResponse(bucket string, object string, obj *apigcs.Object) error {
+	header := map[string][]string{}
+	header["Content-Type"] = []string{"application/json; charset=UTF-8"}
+	body, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r := ioutil.NopCloser(bytes.NewReader(body))
+	res := &http.Response{
+		Status:        "200 OK",
+		StatusCode:    http.StatusOK,
+		Header:        header,
+		Body:          r,
+		ContentLength: int64(len(body)),
+	}
+	if err := faker.AddUpdateObjectAttrsResponse(bucket, object, res); err != nil {
+		return err
+	}
+	return nil
+}
+
+// AddUpdateObjectAttrsSimpleOKResponse is 指定したobjectのmetaのUpdateに対してのOKResponseを登録する
+// 同じ操作を複数回実行する時は複数回Addする
+//
+// Updateして帰ってくるObjectの内容を使わない場合に、雑に情報を返してくれる
+func (faker *Faker) AddUpdateObjectAttrsSimpleOKResponse(bucket string, object string) error {
+	res, err := GenerateSimpleUpdateObjectAttrsOKResponse(bucket, object)
+	if err != nil {
+		return err
+	}
+	if err := faker.AddUpdateObjectAttrsResponse(bucket, object, res); err != nil {
+		return err
+	}
+	return nil
 }
 
 var _ http.RoundTripper = &Transport{}
@@ -47,34 +325,48 @@ func (tran *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 type fakeResponses struct {
-	m map[string]*http.Response
+	// responseMap is RequestされたObjectのURLに対して返すResponseを保持する
+	// 同じObjectURLへのRequestの場合、順番に返していく
+	responseMap map[string]*http.Response
+
+	// requestCountMap is RequestされたObjectのURLをカウントする
+	requestCountMap map[string]int
 }
 
-func (f *fakeResponses) key(url string, method string) string {
+func (f *fakeResponses) keyForResponseMap(url string, method string, count int) string {
+	return fmt.Sprintf("%s-%s-%d", url, strings.ToUpper(method), count)
+}
+
+func (f *fakeResponses) keyForRequestCountMap(url string, method string) string {
 	return fmt.Sprintf("%s-%s", url, strings.ToUpper(method))
 }
 
 func (f *fakeResponses) Add(url string, method string, response *http.Response) {
-	f.m[f.key(url, method)] = response
+	for i := 0; ; i++ {
+		key := f.keyForResponseMap(url, method, i)
+		_, ok := f.responseMap[key]
+		if ok {
+			continue
+		}
+		f.responseMap[key] = response
+		break
+	}
 }
 
 func (f *fakeResponses) Get(url string, method string) (*http.Response, error) {
-	v, ok := f.m[f.key(url, method)]
+	count, ok := f.requestCountMap[f.keyForRequestCountMap(url, method)]
 	if !ok {
-		// TODO 適当なやつを返す
-		switch method {
-		case http.MethodGet:
-			return GetObjectOKResponse(), nil
-		case http.MethodPost:
-			return PostObjectOKResponse(), nil
-		default:
-			return nil, errors.New("unsupported method")
-		}
+		count = 0
+	}
+
+	v, ok := f.responseMap[f.keyForResponseMap(url, method, count)]
+	if !ok {
+		return nil, fmt.Errorf("response is not registered. %s:%s RequestCount is %d", method, url, count+1)
 	}
 	return v, nil
 }
 
-func GetObjectOKResponse() *http.Response {
+func GetObjectOKResponseSample() *http.Response {
 	header := make(map[string][]string)
 	header["Accept-Ranges"] = []string{"bytes"}
 	header["Age"] = []string{"268"}
@@ -105,7 +397,7 @@ func GetObjectOKResponse() *http.Response {
 	}
 }
 
-func PostObjectOKResponse() *http.Response {
+func PostObjectOKResponseSample() *http.Response {
 	header := make(map[string][]string)
 	header["Server"] = []string{"UploadServer"}
 	header["Alt-Svc"] = []string{`quic=":443"; ma=2592000; v="46,43",h3-Q048=":443"; ma=2592000,h3-Q046=":443"; ma=2592000,h3-Q043=":443"; ma=2592000`}

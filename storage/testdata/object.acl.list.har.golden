@@ -1,0 +1,114 @@
+{
+  "log": {
+    "version": "1.2",
+    "creator": {
+      "name": "github.com/vvakame/go-harlog",
+      "version": "0.0.1"
+    },
+    "entries": [
+      {
+        "startedDateTime": "2022-02-16T13:52:34+09:00",
+        "time": 287.455721,
+        "request": {
+          "method": "GET",
+          "url": "https://storage.googleapis.com/storage/v1/b/sinmetal-ci-fake/o/hoge.txt/acl?alt=json\u0026prettyPrint=false",
+          "httpVersion": "HTTP/1.1",
+          "cookies": [],
+          "headers": [
+            {
+              "name": "X-Goog-Api-Client",
+              "value": "gl-go/1.16.3 gccl/20201104"
+            },
+            {
+              "name": "User-Agent",
+              "value": "google-api-go-client/0.5"
+            }
+          ],
+          "queryString": [
+            {
+              "name": "alt",
+              "value": "json"
+            },
+            {
+              "name": "prettyPrint",
+              "value": "false"
+            }
+          ],
+          "headersSize": -1,
+          "bodySize": -1
+        },
+        "response": {
+          "status": 200,
+          "statusText": "",
+          "httpVersion": "HTTP/2.0",
+          "cookies": [],
+          "headers": [
+            {
+              "name": "Server",
+              "value": "UploadServer"
+            },
+            {
+              "name": "Alt-Svc",
+              "value": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000,h3-Q050=\":443\"; ma=2592000,h3-Q046=\":443\"; ma=2592000,h3-Q043=\":443\"; ma=2592000,quic=\":443\"; ma=2592000; v=\"46,43\""
+            },
+            {
+              "name": "X-Guploader-Uploadid",
+              "value": "ADPycdu9HMydM3EwipO6SAHKPqcjxd334k5Cyr8x-abMIDIaHBXPIAElni_fYYdFpN5db9bhih6-MGQdJ7Sdtpyc05ptFXCWmQ"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=UTF-8"
+            },
+            {
+              "name": "Date",
+              "value": "Wed, 16 Feb 2022 04:52:34 GMT"
+            },
+            {
+              "name": "Vary",
+              "value": "Origin"
+            },
+            {
+              "name": "Vary",
+              "value": "X-Origin"
+            },
+            {
+              "name": "Expires",
+              "value": "Wed, 16 Feb 2022 04:52:34 GMT"
+            },
+            {
+              "name": "Etag",
+              "value": "CKPJjMnV/+QCEAI="
+            },
+            {
+              "name": "Cache-Control",
+              "value": "private, max-age=0, must-revalidate, no-transform"
+            },
+            {
+              "name": "Content-Length",
+              "value": "2240"
+            }
+          ],
+          "content": {
+            "size": 2240,
+            "mimeType": "application/json; charset=UTF-8",
+            "text": "eyJraW5kIjoic3RvcmFnZSNvYmplY3RBY2Nlc3NDb250cm9scyIsIml0ZW1zIjpbeyJraW5kIjoic3RvcmFnZSNvYmplY3RBY2Nlc3NDb250cm9sIiwib2JqZWN0IjoiaG9nZS50eHQiLCJnZW5lcmF0aW9uIjoiMTU3MDA5MTIxNTAzNzYwMyIsImlkIjoic2lubWV0YWwtY2ktZmFrZS9ob2dlLnR4dC8xNTcwMDkxMjE1MDM3NjAzL3Byb2plY3Qtb3duZXJzLTQwMTU4MDk3OTgxOSIsInNlbGZMaW5rIjoiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vc3RvcmFnZS92MS9iL3Npbm1ldGFsLWNpLWZha2Uvby9ob2dlLnR4dC9hY2wvcHJvamVjdC1vd25lcnMtNDAxNTgwOTc5ODE5IiwiYnVja2V0Ijoic2lubWV0YWwtY2ktZmFrZSIsImVudGl0eSI6InByb2plY3Qtb3duZXJzLTQwMTU4MDk3OTgxOSIsInJvbGUiOiJPV05FUiIsImV0YWciOiJDS1BKak1uVi8rUUNFQUk9IiwicHJvamVjdFRlYW0iOnsicHJvamVjdE51bWJlciI6IjQwMTU4MDk3OTgxOSIsInRlYW0iOiJvd25lcnMifX0seyJraW5kIjoic3RvcmFnZSNvYmplY3RBY2Nlc3NDb250cm9sIiwib2JqZWN0IjoiaG9nZS50eHQiLCJnZW5lcmF0aW9uIjoiMTU3MDA5MTIxNTAzNzYwMyIsImlkIjoic2lubWV0YWwtY2ktZmFrZS9ob2dlLnR4dC8xNTcwMDkxMjE1MDM3NjAzL3Byb2plY3QtZWRpdG9ycy00MDE1ODA5Nzk4MTkiLCJzZWxmTGluayI6Imh0dHBzOi8vd3d3Lmdvb2dsZWFwaXMuY29tL3N0b3JhZ2UvdjEvYi9zaW5tZXRhbC1jaS1mYWtlL28vaG9nZS50eHQvYWNsL3Byb2plY3QtZWRpdG9ycy00MDE1ODA5Nzk4MTkiLCJidWNrZXQiOiJzaW5tZXRhbC1jaS1mYWtlIiwiZW50aXR5IjoicHJvamVjdC1lZGl0b3JzLTQwMTU4MDk3OTgxOSIsInJvbGUiOiJPV05FUiIsImV0YWciOiJDS1BKak1uVi8rUUNFQUk9IiwicHJvamVjdFRlYW0iOnsicHJvamVjdE51bWJlciI6IjQwMTU4MDk3OTgxOSIsInRlYW0iOiJlZGl0b3JzIn19LHsia2luZCI6InN0b3JhZ2Ujb2JqZWN0QWNjZXNzQ29udHJvbCIsIm9iamVjdCI6ImhvZ2UudHh0IiwiZ2VuZXJhdGlvbiI6IjE1NzAwOTEyMTUwMzc2MDMiLCJpZCI6InNpbm1ldGFsLWNpLWZha2UvaG9nZS50eHQvMTU3MDA5MTIxNTAzNzYwMy9wcm9qZWN0LXZpZXdlcnMtNDAxNTgwOTc5ODE5Iiwic2VsZkxpbmsiOiJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9zdG9yYWdlL3YxL2Ivc2lubWV0YWwtY2ktZmFrZS9vL2hvZ2UudHh0L2FjbC9wcm9qZWN0LXZpZXdlcnMtNDAxNTgwOTc5ODE5IiwiYnVja2V0Ijoic2lubWV0YWwtY2ktZmFrZSIsImVudGl0eSI6InByb2plY3Qtdmlld2Vycy00MDE1ODA5Nzk4MTkiLCJyb2xlIjoiUkVBREVSIiwiZXRhZyI6IkNLUEpqTW5WLytRQ0VBST0iLCJwcm9qZWN0VGVhbSI6eyJwcm9qZWN0TnVtYmVyIjoiNDAxNTgwOTc5ODE5IiwidGVhbSI6InZpZXdlcnMifX0seyJraW5kIjoic3RvcmFnZSNvYmplY3RBY2Nlc3NDb250cm9sIiwib2JqZWN0IjoiaG9nZS50eHQiLCJnZW5lcmF0aW9uIjoiMTU3MDA5MTIxNTAzNzYwMyIsImlkIjoic2lubWV0YWwtY2ktZmFrZS9ob2dlLnR4dC8xNTcwMDkxMjE1MDM3NjAzL3VzZXItbWV0YWwudGllQGdtYWlsLmNvbSIsInNlbGZMaW5rIjoiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vc3RvcmFnZS92MS9iL3Npbm1ldGFsLWNpLWZha2Uvby9ob2dlLnR4dC9hY2wvdXNlci1tZXRhbC50aWVAZ21haWwuY29tIiwiYnVja2V0Ijoic2lubWV0YWwtY2ktZmFrZSIsImVudGl0eSI6InVzZXItbWV0YWwudGllQGdtYWlsLmNvbSIsInJvbGUiOiJPV05FUiIsImVtYWlsIjoibWV0YWwudGllQGdtYWlsLmNvbSIsImV0YWciOiJDS1BKak1uVi8rUUNFQUk9In0seyJraW5kIjoic3RvcmFnZSNvYmplY3RBY2Nlc3NDb250cm9sIiwib2JqZWN0IjoiaG9nZS50eHQiLCJnZW5lcmF0aW9uIjoiMTU3MDA5MTIxNTAzNzYwMyIsImlkIjoic2lubWV0YWwtY2ktZmFrZS9ob2dlLnR4dC8xNTcwMDkxMjE1MDM3NjAzL3VzZXItZXhhbXBsZUBleGFtcGxlLmNvbSIsInNlbGZMaW5rIjoiaHR0cHM6Ly93d3cuZ29vZ2xlYXBpcy5jb20vc3RvcmFnZS92MS9iL3Npbm1ldGFsLWNpLWZha2Uvby9ob2dlLnR4dC9hY2wvdXNlci1leGFtcGxlQGV4YW1wbGUuY29tIiwiYnVja2V0Ijoic2lubWV0YWwtY2ktZmFrZSIsImVudGl0eSI6InVzZXItZXhhbXBsZUBleGFtcGxlLmNvbSIsInJvbGUiOiJSRUFERVIiLCJlbWFpbCI6ImV4YW1wbGVAZXhhbXBsZS5jb20iLCJldGFnIjoiQ0tQSmpNblYvK1FDRUFJPSJ9XX0=",
+            "encoding": "base64"
+          },
+          "redirectURL": "",
+          "headersSize": -1,
+          "bodySize": 2240
+        },
+        "cache": {},
+        "timings": {
+          "blocked": -76.391252,
+          "dns": -0.000001,
+          "connect": 0.000303,
+          "send": 0.034159,
+          "wait": 209.288011,
+          "receive": 1.741996,
+          "ssl": -0.000001
+        }
+      }
+    ]
+  }
+}
