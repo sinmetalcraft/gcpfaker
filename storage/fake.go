@@ -51,81 +51,35 @@ func (faker *Faker) AddGetObjectResponse(bucket string, object string, response 
 	return nil
 }
 
-// WriteObjectResponse is Cloud StorageにPostを行った時のResponse Body
-type WriteObjectResponse struct {
-	Kind                    string    `json:"kind"`
-	ID                      string    `json:"id"`
-	SelfLink                string    `json:"selfLink"`
-	Name                    string    `json:"name"`
-	Bucket                  string    `json:"bucket"`
-	Generation              string    `json:"generation"`
-	Metageneration          string    `json:"metageneration"`
-	ContentType             string    `json:"contentType"`
-	TimeCreated             time.Time `json:"timeCreated"`
-	Updated                 time.Time `json:"updated"`
-	StorageClass            string    `json:"storageClass"`
-	TimeStorageClassUpdated time.Time `json:"timeStorageClassUpdated"`
-	Size                    string    `json:"size"`
-	Md5Hash                 string    `json:"md5Hash"`
-	MediaLink               string    `json:"mediaLink"`
-	ACL                     []*ACL    `json:"acl"`
-	Owner                   *Owner    `json:"owner"`
-	Crc32C                  string    `json:"crc32c"`
-	Etag                    string    `json:"etag"`
-}
-
-type ACL struct {
-	Kind        string       `json:"kind"`
-	ID          string       `json:"id"`
-	SelfLink    string       `json:"selfLink"`
-	Bucket      string       `json:"bucket"`
-	Object      string       `json:"object"`
-	Generation  string       `json:"generation"`
-	Entity      string       `json:"entity"`
-	Role        string       `json:"role"`
-	ProjectTeam *ProjectTeam `json:"projectTeam,omitempty"`
-	Etag        string       `json:"etag"`
-	Email       string       `json:"email,omitempty"`
-}
-
-type ProjectTeam struct {
-	ProjectNumber string `json:"projectNumber"`
-	Team          string `json:"team"`
-}
-
-type Owner struct {
-	Entity string `json:"entity"`
-}
-
 // GenerateSimplePostObjectOKResponse is 最低限指定したそうな場所だけ指定すれば残りは適当に埋めたOKResponseを返す
-func GenerateSimplePostObjectOKResponse(bucket string, object string, contentType string, size int64) *WriteObjectResponse {
-	return &WriteObjectResponse{
+func GenerateSimplePostObjectOKResponse(bucket string, object string, contentType string, size uint64) *apigcs.Object {
+	return &apigcs.Object{
 		Kind:                    "storage#object",
-		ID:                      fmt.Sprintf("%s/%s/1570087904014021", bucket, object),
+		Id:                      fmt.Sprintf("%s/%s/1570087904014021", bucket, object),
 		SelfLink:                fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s", bucket, object),
 		Name:                    object,
 		Bucket:                  bucket,
-		Generation:              "1570087904014021",
-		Metageneration:          "1",
+		Generation:              1570087904014021,
+		Metageneration:          1,
 		ContentType:             contentType,
-		TimeCreated:             time.Now(),
-		Updated:                 time.Now(),
+		TimeCreated:             time.Now().String(),
+		Updated:                 time.Now().String(),
 		StorageClass:            "REGIONAL",
-		TimeStorageClassUpdated: time.Now(),
-		Size:                    fmt.Sprintf("%d", size),
+		TimeStorageClassUpdated: time.Now().String(),
+		Size:                    size,
 		Md5Hash:                 "3fv0VXHjk3nCc3znVNrcRw==",
 		MediaLink:               fmt.Sprintf("https://www.googleapis.com/download/storage/v1/b/%s/o/%s?generation=1570087904014021&alt=media", bucket, object),
-		ACL: []*ACL{
+		Acl: []*apigcs.ObjectAccessControl{
 			{
 				Kind:       "storage#objectAccessControl",
-				ID:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
+				Id:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
 				SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/project-owners-168610916801", bucket, object),
 				Bucket:     bucket,
 				Object:     object,
-				Generation: "1570087904014021",
+				Generation: 1570087904014021,
 				Entity:     "project-owners-168610916801",
 				Role:       "OWNER",
-				ProjectTeam: &ProjectTeam{
+				ProjectTeam: &apigcs.ObjectAccessControlProjectTeam{
 					ProjectNumber: "168610916801",
 					Team:          "owners",
 				},
@@ -134,26 +88,26 @@ func GenerateSimplePostObjectOKResponse(bucket string, object string, contentTyp
 			},
 			{
 				Kind:       "storage#objectAccessControl",
-				ID:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
+				Id:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
 				SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/project-owners-168610916801", bucket, object),
 				Bucket:     bucket,
 				Object:     object,
-				Generation: "1570087904014021",
+				Generation: 1570087904014021,
 				Entity:     "project-owners-168610916801",
 				Role:       "OWNER",
 				Etag:       "CMXdo57J/+QCEAE=",
 				Email:      "faker@example.com",
 			},
 		},
-		Owner: &Owner{
+		Owner: &apigcs.ObjectOwner{
 			Entity: "user-faker@example.com",
 		},
-		Crc32C: "vOMu5Q==",
+		Crc32c: "vOMu5Q==",
 		Etag:   "CMXdo57J/+QCEAE=",
 	}
 }
 
-func (faker *Faker) AddPostObjectOKResponse(bucket string, object string, header map[string][]string, resp *WriteObjectResponse) error {
+func (faker *Faker) AddPostObjectOKResponse(bucket string, object string, header map[string][]string, resp *apigcs.Object) error {
 	body, err := json.Marshal(resp)
 	if err != nil {
 		return err

@@ -104,7 +104,7 @@ func TestPostObject(t *testing.T) {
 	const bucket = "sinmetal-ci-fake"
 	const object = "hoge.txt"
 	const body = `{"message":"Hello Hoge"}`
-	resp := storagefaker.GenerateSimplePostObjectOKResponse(bucket, object, "application/json;utf-8", int64(len([]byte(body))))
+	resp := storagefaker.GenerateSimplePostObjectOKResponse(bucket, object, "application/json; charset=UTF-8", uint64(len([]byte(body))))
 	if err := faker.AddPostObjectOKResponse(bucket, object, make(map[string][]string), resp); err != nil {
 		t.Fatal(err)
 	}
