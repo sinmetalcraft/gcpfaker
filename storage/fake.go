@@ -190,6 +190,124 @@ func (faker *Faker) AddListObjectACLOKResponse(bucket string, object string, rul
 	return nil
 }
 
+// GenerateSimpleUpdateObjectAttrsOKResponse is 更新したObjectの結果のAttrsの情報は気にせず、validなものがあれば良い時に使える
+func GenerateSimpleUpdateObjectAttrsOKResponse(bucket string, object string) (*http.Response, error) {
+	header := map[string][]string{}
+	header["Content-Type"] = []string{"application/json; charset=UTF-8"}
+	obj := &apigcs.Object{
+		Kind:                    "storage#object",
+		Id:                      fmt.Sprintf("%s/%s/1570087904014021", bucket, object),
+		SelfLink:                fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s", bucket, object),
+		Name:                    object,
+		Bucket:                  bucket,
+		Generation:              1570087904014021,
+		Metageneration:          1,
+		ContentType:             "text/plain; charset=utf-8",
+		TimeCreated:             time.Now().String(),
+		Updated:                 time.Now().String(),
+		StorageClass:            "REGIONAL",
+		TimeStorageClassUpdated: time.Now().String(),
+		Size:                    1,
+		Md5Hash:                 "3fv0VXHjk3nCc3znVNrcRw==",
+		MediaLink:               fmt.Sprintf("https://www.googleapis.com/download/storage/v1/b/%s/o/%s?generation=1570087904014021&alt=media", bucket, object),
+		Acl: []*apigcs.ObjectAccessControl{
+			{
+				Kind:       "storage#objectAccessControl",
+				Id:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
+				SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/project-owners-168610916801", bucket, object),
+				Bucket:     bucket,
+				Object:     object,
+				Generation: 1570087904014021,
+				Entity:     "project-owners-168610916801",
+				Role:       "OWNER",
+				ProjectTeam: &apigcs.ObjectAccessControlProjectTeam{
+					ProjectNumber: "168610916801",
+					Team:          "owners",
+				},
+				Etag:  "CMXdo57J/+QCEAE=",
+				Email: "",
+			},
+			{
+				Kind:       "storage#objectAccessControl",
+				Id:         fmt.Sprintf("%s/%s/1570087904014021/project-owners-168610916801", bucket, object),
+				SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/project-owners-168610916801", bucket, object),
+				Bucket:     bucket,
+				Object:     object,
+				Generation: 1570087904014021,
+				Entity:     "project-owners-168610916801",
+				Role:       "OWNER",
+				Etag:       "CMXdo57J/+QCEAE=",
+				Email:      "faker@example.com",
+			},
+		},
+		Owner: &apigcs.ObjectOwner{
+			Entity: "user-faker@example.com",
+		},
+		Crc32c: "vOMu5Q==",
+		Etag:   "CMXdo57J/+QCEAE=",
+	}
+	body, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+	r := ioutil.NopCloser(bytes.NewReader(body))
+	res := &http.Response{
+		Status:        "200 OK",
+		StatusCode:    http.StatusOK,
+		Header:        header,
+		Body:          r,
+		ContentLength: int64(len(body)),
+	}
+	return res, nil
+}
+
+// AddUpdateObjectAttrsResponse is 指定したobjectのmetaのUpdateに対してのResponseを登録する
+// 同じ操作を複数回実行する時は複数回Addする
+func (faker *Faker) AddUpdateObjectAttrsResponse(bucket string, object string, response *http.Response) error {
+	if err := faker.AddResponse(fmt.Sprintf("https://storage.googleapis.com/storage/v1/b/%s/o/%s?alt=json&prettyPrint=false&projection=full", bucket, object), http.MethodPatch, response); err != nil {
+		return err
+	}
+	return nil
+}
+
+// AddUpdateObjectAttrsOKResponse is 指定したobjectのmetaのUpdateに対してのOKResponseを登録する
+// 同じ操作を複数回実行する時は複数回Addする
+func (faker *Faker) AddUpdateObjectAttrsOKResponse(bucket string, object string, obj *apigcs.Object) error {
+	header := map[string][]string{}
+	header["Content-Type"] = []string{"application/json; charset=UTF-8"}
+	body, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	r := ioutil.NopCloser(bytes.NewReader(body))
+	res := &http.Response{
+		Status:        "200 OK",
+		StatusCode:    http.StatusOK,
+		Header:        header,
+		Body:          r,
+		ContentLength: int64(len(body)),
+	}
+	if err := faker.AddUpdateObjectAttrsResponse(bucket, object, res); err != nil {
+		return err
+	}
+	return nil
+}
+
+// AddUpdateObjectAttrsSimpleOKResponse is 指定したobjectのmetaのUpdateに対してのOKResponseを登録する
+// 同じ操作を複数回実行する時は複数回Addする
+//
+// Updateして帰ってくるObjectの内容を使わない場合に、雑に情報を返してくれる
+func (faker *Faker) AddUpdateObjectAttrsSimpleOKResponse(bucket string, object string) error {
+	res, err := GenerateSimpleUpdateObjectAttrsOKResponse(bucket, object)
+	if err != nil {
+		return err
+	}
+	if err := faker.AddUpdateObjectAttrsResponse(bucket, object, res); err != nil {
+		return err
+	}
+	return nil
+}
+
 var _ http.RoundTripper = &Transport{}
 
 type Transport struct {

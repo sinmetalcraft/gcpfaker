@@ -221,6 +221,31 @@ func TestRealObjectListACL(t *testing.T) {
 	hars.Compare(t, "object.acl.list.har.golden", har.HAR())
 }
 
+// TestAddUpdateObjectAttrsSimpleOKResponse
+// Object.Attrsを更新するがどのように変化したかのResultはチェックしないSimpleなResponseを返すものを試す
+func TestAddUpdateObjectAttrsSimpleOKResponse(t *testing.T) {
+	ctx := context.Background()
+
+	faker := storagefaker.NewFaker(t)
+
+	stg, err := storage.NewClient(ctx, option.WithHTTPClient(faker.Client))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const bucket = "sinmetal-ci-fake"
+	const object = "hoge.txt"
+	if err := faker.AddUpdateObjectAttrsSimpleOKResponse(bucket, object); err != nil {
+		t.Fatal(err)
+	}
+
+	// 返ってくるObjectAttrsが特に意味が無いものなので、チェックしない
+	_, err = stg.Bucket(bucket).Object(object).Update(ctx, storage.ObjectAttrsToUpdate{})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRealObjectUpdateACL(t *testing.T) {
 	ctx := context.Background()
 
