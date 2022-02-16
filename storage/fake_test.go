@@ -156,3 +156,106 @@ func TestPostObjectHar(t *testing.T) {
 func TestPostObjectHarToCode(t *testing.T) {
 	hars.LogFakeResponseCode(t, "object.post.har.golden")
 }
+
+// TestObjectListACL is 指定したObjectのACLListを取得する処理にMockResponseを返す
+func TestObjectListACL(t *testing.T) {
+	ctx := context.Background()
+
+	faker := storagefaker.NewFaker(t)
+
+	stg, err := storage.NewClient(ctx, option.WithHTTPClient(faker.Client))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const bucket = "sinmetal-ci-fake"
+	const object = "hoge.txt"
+	const email = "example@example.com"
+	rules := []storage.ACLRule{
+		{
+			Email:  email,
+			Role:   storage.RoleOwner,
+			Entity: storage.ACLEntity(fmt.Sprintf("user-%s", email)),
+		},
+	}
+	if err := faker.AddListObjectACLOKResponse(bucket, object, rules); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := stg.Bucket(bucket).Object(object).ACL().List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e, g := 1, len(got); e != g {
+		t.Errorf("want roles.len %d but got %d", e, g)
+	}
+	if !cmp.Equal(got, rules) {
+		t.Errorf("unexpected response got %+v", got)
+	}
+}
+
+// TestRealObjectListACL is 指定したObjectのACLListを取得するAPIを実行してharとして保存する
+func TestRealObjectListACL(t *testing.T) {
+	ctx := context.Background()
+
+	hc, err := google.DefaultClient(ctx, storage.ScopeReadWrite)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// inject HAR logger!
+	har := &harlog.Transport{
+		Transport: hc.Transport,
+	}
+	hc.Transport = har
+	stg, err := storage.NewClient(ctx, option.WithHTTPClient(hc))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = stg.Bucket("sinmetal-ci-fake").Object("hoge.txt").ACL().List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hars.Compare(t, "object.acl.list.har.golden", har.HAR())
+}
+
+func TestRealObjectUpdateACL(t *testing.T) {
+	ctx := context.Background()
+
+	const bucket = "sinmetal-ci-fake"
+	const object = "hoge.txt"
+
+	defaultClient, err := storage.NewClient(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roles, err := defaultClient.Bucket(bucket).Object(object).ACL().List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roles = append(roles, storage.ACLRule{Entity: storage.ACLEntity(fmt.Sprintf("user-%s", "example@example.com")), Role: storage.RoleReader})
+
+	hc, err := google.DefaultClient(ctx, storage.ScopeReadWrite)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// inject HAR logger!
+	har := &harlog.Transport{
+		Transport: hc.Transport,
+	}
+	hc.Transport = har
+	stg, err := storage.NewClient(ctx, option.WithHTTPClient(hc))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = stg.Bucket("sinmetal-ci-fake").Object("hoge.txt").Update(ctx, storage.ObjectAttrsToUpdate{ACL: roles})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hars.Compare(t, "object.update.attrs.har.golden", har.HAR())
+}

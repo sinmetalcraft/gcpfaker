@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"cloud.google.com/go/storage"
+	apigcs "google.golang.org/api/storage/v1"
 )
 
 type Faker struct {
@@ -164,6 +167,73 @@ func (faker *Faker) AddPostObjectOKResponse(bucket string, object string, header
 		ContentLength: int64(len(body)),
 	}
 	return faker.AddResponse(fmt.Sprintf("https://storage.googleapis.com/upload/storage/v1/b/%s/o?alt=json&name=%s&prettyPrint=false&projection=full&uploadType=multipart", bucket, object), http.MethodPost, res)
+}
+
+func GenerateSimpleListObjectACLOKResponse(bucket string, object string, rules []storage.ACLRule) (*http.Response, error) {
+	header := map[string][]string{}
+	header["Content-Type"] = []string{"application/json; charset=UTF-8"}
+
+	var items []*apigcs.ObjectAccessControl
+	for _, rule := range rules {
+		var generation int64 = 1570091215037603
+		item := &apigcs.ObjectAccessControl{
+			Bucket:     bucket,
+			Domain:     rule.Domain,
+			Email:      rule.Email,
+			Entity:     string(rule.Entity),
+			Etag:       "CKPJjMnV/+QCEAI=",
+			Generation: generation,
+			Id:         fmt.Sprintf("%s/%s/%d/%s", bucket, object, generation, rule.Entity),
+			Kind:       "storage#objectAccessControl",
+			Object:     object,
+			Role:       string(rule.Role),
+			SelfLink:   fmt.Sprintf("https://www.googleapis.com/storage/v1/b/%s/o/%s/acl/%s", bucket, object, rule.Entity),
+		}
+		// TODO ProjectTeamはrule.Entityがproject-owners-{},project-editors-{},project-viewers-{}のいずれかの時に連動して入るようにした方が親切かもしれない
+		if rule.ProjectTeam != nil {
+			item.ProjectTeam = &apigcs.ObjectAccessControlProjectTeam{
+				ProjectNumber: rule.ProjectTeam.ProjectNumber,
+				Team:          rule.ProjectTeam.Team,
+			}
+		}
+		items = append(items, item)
+	}
+
+	acls := &apigcs.ObjectAccessControls{
+		Kind:  "storage#objectAccessControls",
+		Items: items,
+	}
+	body, err := json.Marshal(acls)
+	if err != nil {
+		return nil, err
+	}
+	r := ioutil.NopCloser(bytes.NewReader(body))
+	res := &http.Response{
+		Status:        "200 OK",
+		StatusCode:    http.StatusOK,
+		Header:        header,
+		Body:          r,
+		ContentLength: int64(len(body)),
+	}
+	return res, nil
+}
+
+// AddListObjectACLResponse is 指定したobjectのACLListの取得に対してのResponseを登録する
+// 同じ操作を複数回実行する時は複数回Addする
+func (faker *Faker) AddListObjectACLResponse(bucket string, object string, response *http.Response) error {
+	faker.transport.fakeResponses.Add(fmt.Sprintf("https://storage.googleapis.com/storage/v1/b/%s/o/%s/acl?alt=json&prettyPrint=false", bucket, object), http.MethodGet, response)
+	return nil
+}
+
+// AddListObjectACLResponse is 指定したobjectのACLListの取得に対してのResponseを登録する
+// 同じ操作を複数回実行する時は複数回Addする
+func (faker *Faker) AddListObjectACLOKResponse(bucket string, object string, rules []storage.ACLRule) error {
+	res, err := GenerateSimpleListObjectACLOKResponse(bucket, object, rules)
+	if err != nil {
+		return err
+	}
+	faker.transport.fakeResponses.Add(fmt.Sprintf("https://storage.googleapis.com/storage/v1/b/%s/o/%s/acl?alt=json&prettyPrint=false", bucket, object), http.MethodGet, res)
+	return nil
 }
 
 var _ http.RoundTripper = &Transport{}
