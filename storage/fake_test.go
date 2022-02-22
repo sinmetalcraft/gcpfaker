@@ -18,6 +18,53 @@ import (
 	storagefaker "github.com/sinmetalcraft/gcpfaker/storage"
 )
 
+func TestNewFakerWithoutTesting(t *testing.T) {
+	ctx := context.Background()
+
+	faker := storagefaker.NewFakerWithoutTesting()
+
+	stg, err := storage.NewClient(ctx, option.WithHTTPClient(faker.Client))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const bucket = "sinmetal-ci-fake"
+	const object = "hoge.txt"
+	const body = `{"message":"Hello Hoge"}`
+	header := make(map[string][]string)
+	header["content-type"] = []string{"application/json;utf-8"}
+	header["content-length"] = []string{fmt.Sprintf("%d", len([]byte(body)))}
+	r := ioutil.NopCloser(strings.NewReader(body))
+	res := &http.Response{
+		Status:        "200 OK",
+		StatusCode:    http.StatusOK,
+		Header:        header,
+		Body:          r,
+		ContentLength: int64(len([]byte(body))),
+	}
+	if err := faker.AddGetObjectResponse(bucket, object, res); err != nil {
+		t.Fatal(err)
+	}
+
+	reader, err := stg.Bucket(bucket).Object(object).NewReader(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := reader.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+	got, err := ioutil.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cmp.Equal(string(got), body) {
+		t.Errorf("unexpected response body got %s", string(got))
+	}
+}
+
 func TestGetObject(t *testing.T) {
 	ctx := context.Background()
 
