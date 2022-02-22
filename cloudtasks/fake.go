@@ -55,6 +55,34 @@ func NewFaker(t *testing.T) *Faker {
 	}
 }
 
+func NewFakerWithoutTesting() *Faker {
+	mockCloudTasks := mockCloudTasksServer{
+		mutex:                   &sync.RWMutex{},
+		mockResponseForIndex:    make(map[int]*mockTaskResponse),
+		mockResponseForTaskName: make(map[string]*mockTaskResponse),
+	}
+
+	serv := grpc.NewServer()
+	taskspb.RegisterCloudTasksServer(serv, &mockCloudTasks)
+
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		log.Fatal(err)
+	}
+	go serv.Serve(lis)
+
+	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return &Faker{
+		serv:      serv,
+		mock:      &mockCloudTasks,
+		ClientOpt: option.WithGRPCConn(conn),
+	}
+}
+
 func (f *Faker) Stop() {
 	f.serv.Stop()
 }

@@ -37,6 +37,21 @@ func NewFaker(t *testing.T) *Faker {
 	}
 }
 
+func NewFakerWithoutTesting() *Faker {
+	transport := &Transport{
+		fakeResponses: &fakeResponses{
+			responseMap:     make(map[string]*http.Response),
+			requestCountMap: make(map[string]int),
+		},
+	}
+	return &Faker{
+		transport: transport,
+		Client: &http.Client{
+			Transport: transport,
+		},
+	}
+}
+
 // AddResponse is RequestされたURLに対するResponseを登録する
 // 同じURLを複数回呼ぶ時は複数回Addする
 func (faker *Faker) AddResponse(url string, method string, response *http.Response) error {
@@ -319,7 +334,11 @@ type Transport struct {
 func (tran *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	fake, err := tran.fakeResponses.Get(req.URL.String(), req.Method)
 	if err != nil {
-		tran.t.Fatal("unexpected: ", err)
+		if tran.t != nil {
+			tran.t.Fatal("unexpected: ", err)
+		} else {
+			return nil, fmt.Errorf("failed RoundTrip :%w", err)
+		}
 	}
 	return fake, nil
 }
