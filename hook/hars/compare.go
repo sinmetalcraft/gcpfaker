@@ -2,7 +2,7 @@ package hars
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -22,12 +22,12 @@ func Compare(t *testing.T, goldenPath string, har *harlog.HARContainer) {
 	fn := filepath.Join("testdata", goldenPath)
 	if *hook.Update {
 		t.Logf("update %s", goldenPath)
-		if err := ioutil.WriteFile(fn, got, 0644); err != nil {
+		if err := os.WriteFile(fn, got, 0644); err != nil {
 			t.Fatal("unexpected error:", err)
 		}
 	}
 
-	golden, err := ioutil.ReadFile(fn)
+	golden, err := os.ReadFile(fn)
 	if err != nil {
 		t.Fatal("unexpected error:", err)
 	}

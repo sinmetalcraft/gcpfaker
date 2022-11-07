@@ -3,7 +3,7 @@ package storage_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -34,7 +34,7 @@ func TestNewFakerWithoutTesting(t *testing.T) {
 	header := make(map[string][]string)
 	header["content-type"] = []string{"application/json;utf-8"}
 	header["content-length"] = []string{fmt.Sprintf("%d", len([]byte(body)))}
-	r := ioutil.NopCloser(strings.NewReader(body))
+	r := io.NopCloser(strings.NewReader(body))
 	res := &http.Response{
 		Status:        "200 OK",
 		StatusCode:    http.StatusOK,
@@ -56,7 +56,7 @@ func TestNewFakerWithoutTesting(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	got, err := ioutil.ReadAll(reader)
+	got, err := io.ReadAll(reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestGetObject(t *testing.T) {
 	header := make(map[string][]string)
 	header["content-type"] = []string{"application/json;utf-8"}
 	header["content-length"] = []string{fmt.Sprintf("%d", len([]byte(body)))}
-	r := ioutil.NopCloser(strings.NewReader(body))
+	r := io.NopCloser(strings.NewReader(body))
 	res := &http.Response{
 		Status:        "200 OK",
 		StatusCode:    http.StatusOK,
@@ -103,7 +103,7 @@ func TestGetObject(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	got, err := ioutil.ReadAll(reader)
+	got, err := io.ReadAll(reader)
 	if err != nil {
 		t.Fatal(err)
 	}
