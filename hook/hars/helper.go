@@ -3,7 +3,7 @@ package hars
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -17,7 +17,7 @@ func LogFakeResponseCode(t *testing.T, goldenPath string) {
 		return
 	}
 	fn := filepath.Join("testdata", goldenPath)
-	golden, err := ioutil.ReadFile(fn)
+	golden, err := os.ReadFile(fn)
 	if err != nil {
 		t.Fatal("unexpected error:", err)
 	}
@@ -33,7 +33,7 @@ func LogFakeResponseCode(t *testing.T, goldenPath string) {
 			fmt.Printf("header[\"%v\"] = []string{\"%v\"}\n", header.Name, header.Value)
 		}
 
-		fmt.Printf("r := ioutil.NopCloser(strings.NewReader(`%s`))", entry.Response.Content.Text)
+		fmt.Printf("r := io.NopCloser(strings.NewReader(`%s`))", entry.Response.Content.Text)
 
 		fmt.Printf(`
 return &http.Response{

@@ -2,7 +2,7 @@ package hook
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"testing"
@@ -73,13 +73,13 @@ func (t *Transport) copyRequest(req *http.Request) {
 	}
 
 	if req.Body != nil {
-		b, err := ioutil.ReadAll(req.Body)
+		b, err := io.ReadAll(req.Body)
 		if err != nil {
 			panic(err)
 		}
 		hr.Body = b
 
-		req.Body = ioutil.NopCloser(bytes.NewReader(b))
+		req.Body = io.NopCloser(bytes.NewReader(b))
 	}
 
 	t.Request = hr
@@ -91,13 +91,13 @@ func (t *Transport) copyResponse(resp *http.Response) {
 		Body:   nil,
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
 	hr.Body = b
 
-	resp.Body = ioutil.NopCloser(bytes.NewReader(b))
+	resp.Body = io.NopCloser(bytes.NewReader(b))
 
 	t.Response = hr
 }
