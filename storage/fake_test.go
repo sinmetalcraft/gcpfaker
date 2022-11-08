@@ -75,40 +75,54 @@ func TestGetObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const bucket = "sinmetal-ci-fake"
-	const object = "hoge.txt"
-	const body = `{"message":"Hello Hoge"}`
-	header := make(map[string][]string)
-	header["content-type"] = []string{"application/json;utf-8"}
-	header["content-length"] = []string{fmt.Sprintf("%d", len([]byte(body)))}
-	r := io.NopCloser(strings.NewReader(body))
-	res := &http.Response{
-		Status:        "200 OK",
-		StatusCode:    http.StatusOK,
-		Header:        header,
-		Body:          r,
-		ContentLength: int64(len([]byte(body))),
-	}
-	if err := faker.AddGetObjectResponse(bucket, object, res); err != nil {
-		t.Fatal(err)
+	cases := []struct {
+		name  string
+		want  string
+		count int
+	}{
+		{"hello", `{"message":"Hello Hoge"}`, 2},
+		{"world", `{"message":"Hello World"}`, 2},
 	}
 
-	reader, err := stg.Bucket(bucket).Object(object).NewReader(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		err := reader.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}()
-	got, err := io.ReadAll(reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !cmp.Equal(string(got), body) {
-		t.Errorf("unexpected response body got %s", string(got))
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			const bucket = "sinmetal-ci-fake"
+			const object = "hoge.txt"
+			for i := 0; i < tt.count; i++ {
+				header := make(map[string][]string)
+				header["content-type"] = []string{"application/json;utf-8"}
+				header["content-length"] = []string{fmt.Sprintf("%d", len([]byte(tt.want)))}
+				r := io.NopCloser(strings.NewReader(tt.want))
+				res := &http.Response{
+					Status:        "200 OK",
+					StatusCode:    http.StatusOK,
+					Header:        header,
+					Body:          r,
+					ContentLength: int64(len([]byte(tt.want))),
+				}
+
+				if err := faker.AddGetObjectResponse(bucket, object, res); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for i := 0; i < tt.count; i++ {
+				reader, err := stg.Bucket(bucket).Object(object).NewReader(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, err := io.ReadAll(reader)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := reader.Close(); err != nil {
+					t.Fatal(err)
+				}
+				if !cmp.Equal(string(got), tt.want) {
+					t.Errorf("unexpected response body got %s", string(got))
+				}
+			}
+		})
 	}
 }
 
@@ -148,24 +162,41 @@ func TestPostObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const bucket = "sinmetal-ci-fake"
-	const object = "hoge.txt"
-	const body = `{"message":"Hello Hoge"}`
-	resp := storagefaker.GenerateSimplePostObjectOKResponse(bucket, object, "application/json; charset=UTF-8", uint64(len([]byte(body))))
-	if err := faker.AddPostObjectOKResponse(bucket, object, make(map[string][]string), resp); err != nil {
-		t.Fatal(err)
+	cases := []struct {
+		name  string
+		want  string
+		count int
+	}{
+		{"hello", `{"message":"Hello Hoge"}`, 2},
+		{"world", `{"message":"Hello World"}`, 2},
 	}
 
-	w := stg.Bucket(bucket).Object(object).NewWriter(ctx)
-	n, err := w.Write([]byte(body))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if n < 1 {
-		t.Error("write result bytes is Zero")
-	}
-	if err := w.Close(); err != nil {
-		t.Fatal(err)
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			const bucket = "sinmetal-ci-fake"
+			const object = "hoge.txt"
+
+			for i := 0; i < tt.count; i++ {
+				resp := storagefaker.GenerateSimplePostObjectOKResponse(bucket, object, "application/json; charset=UTF-8", uint64(len([]byte(tt.want))))
+				if err := faker.AddPostObjectOKResponse(bucket, object, make(map[string][]string), resp); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for i := 0; i < tt.count; i++ {
+				w := stg.Bucket(bucket).Object(object).NewWriter(ctx)
+				n, err := w.Write([]byte(tt.want))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if n < 1 {
+					t.Error("write result bytes is Zero")
+				}
+				if err := w.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
 	}
 }
 
