@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"testing"
@@ -194,7 +195,7 @@ func (faker *Faker) AddListObjectACLResponse(bucket string, object string, respo
 	return nil
 }
 
-// AddListObjectACLResponse is 指定したobjectのACLListの取得に対してのResponseを登録する
+// AddListObjectACLOKResponse is 指定したobjectのACLListの取得に対してのResponseを登録する
 // 同じ操作を複数回実行する時は複数回Addする
 func (faker *Faker) AddListObjectACLOKResponse(bucket string, object string, rules []storage.ACLRule) error {
 	res, err := GenerateSimpleListObjectACLOKResponse(bucket, object, rules)
@@ -361,7 +362,8 @@ func (f *fakeResponses) keyForRequestCountMap(url string, method string) string 
 }
 
 func (f *fakeResponses) Add(url string, method string, response *http.Response) {
-	for i := 0; ; i++ {
+	// countが空いてるところにAddする
+	for i := 0; i < math.MaxInt32; i++ {
 		key := f.keyForResponseMap(url, method, i)
 		_, ok := f.responseMap[key]
 		if ok {
@@ -382,6 +384,7 @@ func (f *fakeResponses) Get(url string, method string) (*http.Response, error) {
 	if !ok {
 		return nil, fmt.Errorf("response is not registered. %s:%s RequestCount is %d", method, url, count+1)
 	}
+	f.requestCountMap[f.keyForRequestCountMap(url, method)] = count + 1
 	return v, nil
 }
 
